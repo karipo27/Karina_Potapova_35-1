@@ -425,6 +425,70 @@ https://templatemo.com/tm-559-zay-shop
     <script src="assets/js/templatemo.js"></script>
     <script src="assets/js/custom.js"></script>
     <!-- End Script -->
+<!-- A/B pilot: only the hero CTA differs between groups -->
+<script>
+// Zerno: randomized pilot. Include at the end of the existing homepage.
+(() => {
+  const experiment = 'zerno_hero_cta_v1';
+  const forced = new URLSearchParams(location.search).get('ab_preview');
+  const preview = forced === 'A' || forced === 'B';
+  let variant = forced;
+  if (!preview) {
+    try {
+      variant = localStorage.getItem(experiment);
+      if (variant !== 'A' && variant !== 'B') {
+        variant = Math.random() < 0.5 ? 'A' : 'B';
+        localStorage.setItem(experiment, variant);
+      }
+    } catch (_) {
+      // Exclude browsers without persistent assignment from measurement.
+      variant = 'A';
+      return;
+    }
+  }
+  const hero = document.querySelector('#template-mo-zay-hero-carousel .carousel-item.active .text-align-left');
+  if (!hero) return;
+  if (variant === 'B') {
+    const button = document.createElement('a');
+    button.href = 'shop.html';
+    button.className = 'btn btn-success btn-lg';
+    button.textContent = 'Обрати каву';
+    button.id = 'ab-hero-cta';
+    hero.appendChild(button);
+  }
+  document.documentElement.dataset.abVariant = variant;
+  if (preview) return; // Screenshot/preview visits do not send experiment events.
+  const send = name => {
+    if (typeof window.gtag === 'function') {
+      window.gtag('event', name + '_' + variant.toLowerCase(), {
+        experiment_id: experiment,
+        transport_type: 'beacon'
+      });
+    }
+  };
+  let exposed = false;
+  function expose() {
+    if (!exposed && document.visibilityState === 'visible') {
+      exposed = true;
+      send('ab_exposure');
+    }
+  }
+  expose();
+  document.addEventListener('visibilitychange', expose);
+  let clicked = false;
+  document.addEventListener('click', event => {
+    const link = event.target.closest && event.target.closest('a[href]');
+    if (!link || clicked || !exposed) return;
+    const target = new URL(link.href, location.href);
+    const catalog = new URL('shop.html', location.href);
+    if (target.origin === catalog.origin && target.pathname === catalog.pathname) {
+      clicked = true;
+      send('ab_catalog');
+    }
+  });
+})();
+
+</script>
 </body>
 
 </html>
